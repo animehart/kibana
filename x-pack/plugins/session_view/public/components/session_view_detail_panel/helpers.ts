@@ -4,8 +4,9 @@
  * 2.0; you may not use this file except in compliance with the Elastic License
  * 2.0.
  */
-import { EventAction, Process, ProcessFields } from '../../../common/types/process_tree';
+import { EventAction, Process, ProcessFields, EventKind } from '../../../common/types/process_tree';
 import { DetailPanelProcess, EuiTabProps } from '../../types';
+import { dataOrDash } from '../../utils/data_or_dash';
 
 const FILTER_FORKS_EXECS = [EventAction.fork, EventAction.exec];
 
@@ -20,10 +21,11 @@ const getDetailPanelProcessLeader = (leader: ProcessFields) => ({
 
 export const getDetailPanelProcess = (process: Process) => {
   const processData = {} as DetailPanelProcess;
+  const result = process.events.filter((items) => items.event.action === 'end');
 
   processData.id = process.id;
   processData.start = process.events[0]['@timestamp'];
-  processData.end = process.events[process.events.length - 1]['@timestamp'];
+  processData.end = dataOrDash(result.length === 0 ? '' : result[result.length - 1]['@timestamp']) as string;
   processData.args = [];
   processData.executable = [];
 
