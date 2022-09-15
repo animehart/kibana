@@ -402,6 +402,7 @@ export const EndpointPolicyCreateExtension = memo<PackagePolicyCreateExtensionCo
         </PaddingBottomText>
         <EuiSelect
           id="selectIntegrationTypeId"
+          data-test-subj="selectIntegrationTypeId"
           options={dropDownOptions}
           value={dropdownValue}
           onChange={(e) => onChangeDropdown(e)}
