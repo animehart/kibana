@@ -27,6 +27,20 @@ export const EDR_COMPLETE = i18n.translate(
   }
 );
 
+export const ANTI_VIRUS = i18n.translate(
+  'xpack.securitySolution.createPackagePolicy.stepConfigure.endpointDropdownOptionAntiVirus',
+  {
+    defaultMessage: 'Anti Virus (AV)',
+  }
+);
+
+export const DATA_COLLECTION = i18n.translate(
+  'xpack.securitySolution.createPackagePolicy.stepConfigure.endpointDropdownOptionDataCollection',
+  {
+    defaultMessage: 'Data Collection',
+  }
+);
+
 export const ENDPOINT = i18n.translate(
   'xpack.securitySolution.createPackagePolicy.stepConfigure.endpointDropdownOption',
   {

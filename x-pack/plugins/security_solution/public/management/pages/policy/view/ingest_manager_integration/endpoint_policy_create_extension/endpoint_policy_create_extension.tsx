@@ -29,6 +29,8 @@ import {
   ENDPOINT,
   INTERACTIVE_ONLY,
   PREVENT_MALICIOUS_BEHAVIOUR,
+  DATA_COLLECTION,
+  ANTI_VIRUS,
 } from './translations';
 
 const PREFIX = 'endpoint_policy_create_extension';
@@ -44,6 +46,8 @@ const endpointPresetsMapping = {
   NGAV,
   EDREssential: EDR_ESSENTIAL,
   EDRComplete: EDR_COMPLETE,
+  AntiVirus: ANTI_VIRUS,
+  DataCollection: DATA_COLLECTION,
 };
 
 const cloudEventMapping = {
@@ -251,8 +255,36 @@ export const EndpointPolicyCreateExtension = memo<PackagePolicyCreateExtensionCo
               helpText={
                 <HelpTextWithPadding>
                   <FormattedMessage
+                    id="xpack.securitySolution.createPackagePolicy.stepConfigure.packagePolicTypeEndpointEDRComplete"
+                    defaultMessage="Augment your existing anti-virus solution with advanced data collection and detection"
+                  />
+                </HelpTextWithPadding>
+              }
+            >
+              <EuiRadio {...getEndpointPresetsProps('DataCollection')} />
+            </EuiFormRow>
+            <EuiSpacer size="s" />
+            <EuiFormRow
+              fullWidth
+              helpText={
+                <HelpTextWithPadding>
+                  <FormattedMessage
+                    id="xpack.securitySolution.createPackagePolicy.stepConfigure.packagePolicTypeEndpointEDRComplete"
+                    defaultMessage="Machine learning malware prevention with process telemetry"
+                  />
+                </HelpTextWithPadding>
+              }
+            >
+              <EuiRadio {...getEndpointPresetsProps('AntiVirus')} />
+            </EuiFormRow>
+            <EuiSpacer size="s" />
+            <EuiFormRow
+              fullWidth
+              helpText={
+                <HelpTextWithPadding>
+                  <FormattedMessage
                     id="xpack.securitySolution.createPackagePolicy.stepConfigure.packagePolicTypeEndpointNGAV"
-                    defaultMessage="Prevents Malware, Ransomware and Memory Threats and provides process telemetry"
+                    defaultMessage="Machine learning malware, ransomware, memory threat, malicious behavior, and credential theft preventions, with process telemetry"
                   />
                 </HelpTextWithPadding>
               }
@@ -266,7 +298,7 @@ export const EndpointPolicyCreateExtension = memo<PackagePolicyCreateExtensionCo
                 <HelpTextWithPadding>
                   <FormattedMessage
                     id="xpack.securitySolution.createPackagePolicy.stepConfigure.packagePolicTypeEndpointEDREssential"
-                    defaultMessage="Endpoint Alerts, Process Events, Network Events, File Events"
+                    defaultMessage="Everything in NGAV, with file and network telemetry"
                   />
                 </HelpTextWithPadding>
               }
@@ -280,7 +312,7 @@ export const EndpointPolicyCreateExtension = memo<PackagePolicyCreateExtensionCo
                 <HelpTextWithPadding>
                   <FormattedMessage
                     id="xpack.securitySolution.createPackagePolicy.stepConfigure.packagePolicTypeEndpointEDRComplete"
-                    defaultMessage="Endpoint Alerts, Full Event capture"
+                    defaultMessage="Everything in Essential EDR, plus full telemetry"
                   />
                 </HelpTextWithPadding>
               }
