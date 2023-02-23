@@ -67,7 +67,7 @@ const getHealthyAgents = async (
   );
 };
 
-const calculateCspStatusCode = (
+export const calculateCspStatusCode = (
   postureType: PostureTypes,
   indicesStatus: {
     findingsLatest: IndexStatus;
@@ -84,13 +84,12 @@ const calculateCspStatusCode = (
     postureType === POSTURE_TYPE_CSPM ? POSTURE_TYPE_CSPM : POSTURE_TYPE_KSPM;
   if (indicesStatus.findingsLatest === 'unprivileged' || indicesStatus.score === 'unprivileged')
     return 'unprivileged';
-  if (!installedPolicyTemplates.includes(postureTypeCheck)) return 'not-installed';
   if (
-    indicesStatus.findingsLatest === 'not-empty' &&
-    installedCspPackagePolicies !== 0 &&
-    healthyAgents !== 0
+    indicesStatus.findings === 'not-empty'||
+    indicesStatus.score === 'not-empty'
   )
     return 'indexed';
+  if (!installedPolicyTemplates.includes(postureTypeCheck)) return 'not-installed';
   if (healthyAgents === 0) return 'not-deployed';
   if (timeSinceInstallationInMinutes <= INDEX_TIMEOUT_IN_MINUTES) return 'indexing';
   if (timeSinceInstallationInMinutes > INDEX_TIMEOUT_IN_MINUTES) return 'index-timeout';
@@ -152,7 +151,7 @@ const getCspStatus = async ({
     ),
     getInstalledPolicyTemplates(packagePolicyService, soClient),
   ]);
-
+console.log(findingsIndexStatus)
   const healthyAgentsKspm = await getHealthyAgents(
     soClient,
     installedPackagePoliciesKspm.items,
