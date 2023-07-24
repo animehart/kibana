@@ -5,6 +5,7 @@
  * 2.0.
  */
 import React, { useEffect, useState } from 'react';
+import semverLt from 'semver/functions/lt';
 import {
   EuiFieldText,
   EuiFormRow,
@@ -101,6 +102,12 @@ const gcpField: GcpInputFields = {
       }),
       type: 'text',
     },
+    credentials_type: {
+      label: i18n.translate('xpack.csp.gcpIntegration.credentialsTypeFieldLabel', {
+        defaultMessage: 'Credentials Type',
+      }),
+      type: 'text',
+    },
   },
 };
 
@@ -190,7 +197,7 @@ export const GcpCredentialsForm = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [input, packageInfo]);
 
-  if (packageInfo.version < MIN_VERSION_GCP_CIS) {
+  if (semverLt(packageInfo.version.split('-')[0], MIN_VERSION_GCP_CIS)) {
     return (
       <>
         <EuiSpacer size="l" />
@@ -240,52 +247,66 @@ const GcpInputVarFields = ({
   fields: Array<GcpFields[keyof GcpFields] & { value: string; id: string }>;
   onChange: (key: string, value: string) => void;
 }) => {
-  const [credentialOption, setCredentialOption] = useState('Credentials File');
-  const targetFieldName = (id: string) => {
+  const getFieldById = (id: keyof GcpInputFields['fields']) => {
     return fields.find((element) => element.id === id);
   };
+  const [credentialOption, setCredentialOption] = useState('Credentials File');
+  const credentialsTypeField = {
+    id: 'credentials_type',
+    label: 'Credentials Type',
+    type: 'text',
+    value: credentialOption,
+  };
+  const projectIdFields = getFieldById('project_id');
+  const credentialsTypeFields = getFieldById('credentials_type');
+  const credentialFilesFields = getFieldById('credentials_file');
+  const credentialJSONFields = getFieldById('credentials_json');
+
   return (
     <div>
       <EuiForm component="form">
-        <EuiFormRow fullWidth label={gcpField.fields.project_id.label}>
-          <EuiFieldText
-            id={targetFieldName('project_id')!.id}
-            fullWidth
-            value={targetFieldName('project_id')!.value || ''}
-            onChange={(event) => onChange(targetFieldName('project_id')!.id, event.target.value)}
-          />
-        </EuiFormRow>
-        <EuiFormRow fullWidth label={'Credentials'}>
-          <EuiSelect
-            fullWidth
-            options={credentialOptionsList}
-            value={credentialOption}
-            onChange={(optionElem) => {
-              setCredentialOption(optionElem.target.value);
-            }}
-          />
-        </EuiFormRow>
-        {credentialOption === 'Credentials File' && (
-          <EuiFormRow fullWidth label={CredentialFileText}>
+        {projectIdFields && (
+          <EuiFormRow fullWidth label={gcpField.fields.project_id.label}>
             <EuiFieldText
-              id={targetFieldName('credentials_file')!.id}
+              id={projectIdFields.id}
               fullWidth
-              value={targetFieldName('credentials_file')!.value || ''}
-              onChange={(event) =>
-                onChange(targetFieldName('credentials_file')!.id, event.target.value)
-              }
+              value={projectIdFields.value || ''}
+              onChange={(event) => onChange(projectIdFields.id, event.target.value)}
             />
           </EuiFormRow>
         )}
-        {credentialOption === 'Credentials JSON' && (
+        {credentialFilesFields && credentialJSONFields && (
+          <EuiFormRow fullWidth label={'Credentials'}>
+            <EuiSelect
+              fullWidth
+              options={credentialOptionsList}
+              value={credentialsTypeFields?.value || credentialOption}
+              onChange={(optionElem) => {
+                setCredentialOption(optionElem.target.value);
+                onChange(credentialsTypeField!.id, optionElem.target.value);
+              }}
+            />
+          </EuiFormRow>
+        )}
+
+        {(credentialsTypeFields?.value || credentialOption) === 'Credentials File' &&
+          credentialFilesFields && (
+            <EuiFormRow fullWidth label={CredentialFileText}>
+              <EuiFieldText
+                id={credentialFilesFields.id}
+                fullWidth
+                value={credentialFilesFields.value || ''}
+                onChange={(event) => onChange(credentialFilesFields.id, event.target.value)}
+              />
+            </EuiFormRow>
+          )}
+        {credentialsTypeFields?.value === 'Credentials JSON' && credentialJSONFields && (
           <EuiFormRow fullWidth label={CredentialJSONText}>
             <EuiTextArea
-              id={targetFieldName('credentials_json')!.id}
+              id={credentialJSONFields.id}
               fullWidth
-              value={targetFieldName('credentials_json')!.value || ''}
-              onChange={(event) =>
-                onChange(targetFieldName('credentials_json')!.id, event.target.value)
-              }
+              value={credentialJSONFields.value || ''}
+              onChange={(event) => onChange(credentialJSONFields.id, event.target.value)}
             />
           </EuiFormRow>
         )}
@@ -293,3 +314,6 @@ const GcpInputVarFields = ({
     </div>
   );
 };
+/*
+
+*/
