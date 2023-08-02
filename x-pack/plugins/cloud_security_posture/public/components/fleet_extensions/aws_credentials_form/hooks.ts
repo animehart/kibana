@@ -27,6 +27,13 @@ import { CLOUDBEAT_AWS } from '../../../../common/constants';
 
 export type SetupFormat = 'cloud_formation' | 'manual';
 
+type GcpFields = Record<string, { label: string; type?: 'password' | 'text' }>;
+interface GcpInputFields {
+  fields: GcpFields;
+}
+
+type SetupFormatGCP = 'google_cloud_shell' | 'manual';
+
 const getSetupFormatFromInput = (
   input: Extract<NewPackagePolicyPostureInput, { type: 'cloudbeat/cis_aws' }>,
   hasCloudFormationTemplate: boolean
@@ -41,6 +48,21 @@ const getSetupFormatFromInput = (
   }
 
   return 'cloud_formation';
+};
+
+const getSetupAccessFromInput = (
+  input: Extract<NewPackagePolicyPostureInput, { type: 'cloudbeat/cis_gcp' }>
+): 'google_cloud_shell' | 'manual' | undefined => {
+  const credentialsType = input.streams[0].vars?.setup_access?.value;
+  // CloudFormation is the default setup format if the integration has a CloudFormation template
+  if (!credentialsType) {
+    return 'google_cloud_shell';
+  }
+  if (credentialsType !== 'google_cloud_shell') {
+    return 'manual';
+  }
+
+  return 'google_cloud_shell';
 };
 
 const getAwsCredentialsType = (
@@ -141,6 +163,62 @@ export const useAwsCredentialsForm = ({
     fields,
     integrationLink,
     hasCloudFormationTemplate,
+    onSetupFormatChange,
+  };
+};
+
+export const useGcpCredentialsForm = ({
+  newPolicy,
+  input,
+  updatePolicy,
+  gcpField,
+}: {
+  newPolicy: NewPackagePolicy;
+  input: Extract<NewPackagePolicyPostureInput, { type: 'cloudbeat/cis_gcp' }>;
+  updatePolicy: (updatedPolicy: NewPackagePolicy) => void;
+  gcpField: GcpInputFields;
+}) => {
+  const fields = getInputVarsFields(input, gcpField.fields);
+  const fieldsSnapshot = useRef({});
+  const lastManualCredentialsType = useRef<string | undefined>(undefined);
+  const setupFormat = getSetupAccessFromInput(input);
+  const onSetupFormatChange = (newSetupFormat: SetupFormatGCP) => {
+    if (newSetupFormat === 'google_cloud_shell') {
+      // We need to store the current manual fields to restore them later
+      fieldsSnapshot.current = Object.fromEntries(
+        fields.map((field) => [field.id, { value: field.value }])
+      );
+      // We need to store the last manual credentials type to restore it later
+      lastManualCredentialsType.current = input.streams[0].vars?.setup_access?.value;
+
+      updatePolicy(
+        getPosturePolicy(newPolicy, input.type, {
+          setup_access: {
+            value: 'google_cloud_shell',
+            type: 'text',
+          },
+          // Clearing fields from previous setup format to prevent exposing credentials
+          // when switching from manual to cloud formation
+          ...Object.fromEntries(fields.map((field) => [field.id, { value: undefined }])),
+        })
+      );
+    } else {
+      updatePolicy(
+        getPosturePolicy(newPolicy, input.type, {
+          setup_access: {
+            // Restoring last manual credentials type or defaulting to the first option
+            value: lastManualCredentialsType.current || 'manual',
+            type: 'text',
+          },
+          // Restoring fields from manual setup format if any
+          ...fieldsSnapshot.current,
+        })
+      );
+    }
+  };
+
+  return {
+    setupFormat,
     onSetupFormatChange,
   };
 };
