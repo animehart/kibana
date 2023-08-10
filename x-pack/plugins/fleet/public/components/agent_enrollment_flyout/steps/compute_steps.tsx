@@ -220,7 +220,9 @@ export const ManagedSteps: React.FunctionComponent<InstructionProps> = ({
     fleetProxy,
     kibanaVersion,
   });
-
+console.log('HERE')
+console.log(installManagedCommands)
+console.log(cloudSecurityIntegration)
   const instructionsSteps = useMemo(() => {
     const steps: EuiContainedStepProps[] = !agentPolicy
       ? [

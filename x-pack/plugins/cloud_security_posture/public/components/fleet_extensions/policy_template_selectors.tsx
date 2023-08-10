@@ -21,6 +21,7 @@ import { RadioGroup } from './csp_boxed_radio_group';
 import { AwsCredentialsForm } from './aws_credentials_form/aws_credentials_form';
 import { EksCredentialsForm } from './eks_credentials_form';
 import { GcpCredentialsForm } from './gcp_credential_form';
+// import { GcpCredentialsForm } from './gcp_credentials_form/gcp_credentials_form';
 
 interface PolicyTemplateSelectorProps {
   selectedTemplate: CloudSecurityPolicyTemplate;
