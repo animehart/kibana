@@ -9,9 +9,11 @@ import { useEffect, useRef } from 'react';
 import { NewPackagePolicy, PackageInfo } from '@kbn/fleet-plugin/common';
 import { cspIntegrationDocsNavigation } from '../../../common/navigation/constants';
 import {
+  getConfigUrl,
   getCspmCloudFormationDefaultValue,
   getPosturePolicy,
   NewPackagePolicyPostureInput,
+  updateConfigUrl,
 } from '../utils';
 import {
   AwsCredentialsType,
@@ -146,10 +148,11 @@ export const useAwsCredentialsForm = ({
 };
 
 const getAwsCloudFormationTemplate = (newPolicy: NewPackagePolicy) => {
-  const template: string | undefined = newPolicy?.inputs?.find((i) => i.type === CLOUDBEAT_AWS)
-    ?.config?.cloud_formation_template_url?.value;
+  // const template: string | undefined = newPolicy?.inputs?.find((i) => i.type === CLOUDBEAT_AWS)
+  //   ?.config?.cloud_formation_template_url?.value;
 
-  return template || undefined;
+  // return template || undefined;
+  return getConfigUrl(newPolicy, CLOUDBEAT_AWS)
 };
 
 const updateCloudFormationPolicyTemplate = (
@@ -157,18 +160,19 @@ const updateCloudFormationPolicyTemplate = (
   updatePolicy: (policy: NewPackagePolicy) => void,
   templateUrl: string | undefined
 ) => {
-  updatePolicy?.({
-    ...newPolicy,
-    inputs: newPolicy.inputs.map((input) => {
-      if (input.type === CLOUDBEAT_AWS) {
-        return {
-          ...input,
-          config: { cloud_formation_template_url: { value: templateUrl } },
-        };
-      }
-      return input;
-    }),
-  });
+  return updateConfigUrl(newPolicy, updatePolicy, templateUrl)
+  // updatePolicy?.({
+  //   ...newPolicy,
+  //   inputs: newPolicy.inputs.map((input) => {
+  //     if (input.type === CLOUDBEAT_AWS) {
+  //       return {
+  //         ...input,
+  //         config: { cloud_formation_template_url: { value: templateUrl } },
+  //       };
+  //     }
+  //     return input;
+  //   }),
+  // });
 };
 
 const useCloudFormationTemplate = ({

@@ -245,3 +245,42 @@ export const getCspmCloudShellDefaultValue = (packageInfo: PackageInfo): string 
 
   return cloudShellUrl;
 };
+
+export const updateConfigUrl = (
+  newPolicy: NewPackagePolicy,
+  updatePolicy: (policy: NewPackagePolicy) => void,
+  templateUrl: string | undefined,
+) => {
+
+  updatePolicy?.({
+    ...newPolicy,
+    inputs: newPolicy.inputs.map((input) => {
+      if (input.type === CLOUDBEAT_AWS) {
+        return {
+          ...input,
+          config: { cloud_formation_template_url: { value: templateUrl } },
+        };
+      }
+      if (input.type === CLOUDBEAT_GCP) {
+        return {
+          ...input,
+          config: { cloud_shell_url: { value: templateUrl } },
+        };
+      }
+      return input;
+    }),
+  });
+};
+
+export const getConfigUrl = (newPolicy: NewPackagePolicy, type: string) => {
+  if(type === CLOUDBEAT_AWS) {
+    const template: string | undefined = newPolicy?.inputs?.find((i) => i.type === CLOUDBEAT_AWS)
+    ?.config?.cloud_formation_template_url?.value;
+
+    return template || undefined;
+  }
+  const template: string | undefined = newPolicy?.inputs?.find((i) => i.type === CLOUDBEAT_GCP)
+  ?.config?.cloud_shell_url?.value;
+
+  return template || undefined;
+};

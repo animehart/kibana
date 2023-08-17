@@ -35,6 +35,8 @@ import {
   getCspmCloudShellDefaultValue,
   getPosturePolicy,
   NewPackagePolicyPostureInput,
+  updateConfigUrl,
+  getConfigUrl,
 } from './utils';
 import { MIN_VERSION_GCP_CIS } from '../../common/constants';
 import { cspIntegrationDocsNavigation } from '../../common/navigation/constants';
@@ -228,10 +230,11 @@ const getSetupFormatFromInput = (
 };
 
 const getGoogleCloudShellUrl = (newPolicy: NewPackagePolicy) => {
-  const template: string | undefined = newPolicy?.inputs?.find((i) => i.type === CLOUDBEAT_GCP)
-    ?.config?.cloud_shell_url?.value;
+  // const template: string | undefined = newPolicy?.inputs?.find((i) => i.type === CLOUDBEAT_GCP)
+  //   ?.config?.cloud_shell_url?.value;
 
-  return template || undefined;
+  // return template || undefined;
+  return getConfigUrl(newPolicy, CLOUDBEAT_GCP)
 };
 
 const updateCloudShellUrl = (
@@ -239,18 +242,19 @@ const updateCloudShellUrl = (
   updatePolicy: (policy: NewPackagePolicy) => void,
   templateUrl: string | undefined
 ) => {
-  updatePolicy?.({
-    ...newPolicy,
-    inputs: newPolicy.inputs.map((input) => {
-      if (input.type === CLOUDBEAT_GCP) {
-        return {
-          ...input,
-          config: { cloud_shell_url: { value: templateUrl } },
-        };
-      }
-      return input;
-    }),
-  });
+  return updateConfigUrl(newPolicy, updatePolicy, templateUrl)
+  // updatePolicy?.({
+  //   ...newPolicy,
+  //   inputs: newPolicy.inputs.map((input) => {
+  //     if (input.type === CLOUDBEAT_GCP) {
+  //       return {
+  //         ...input,
+  //         config: { cloud_shell_url: { value: templateUrl } },
+  //       };
+  //     }
+  //     return input;
+  //   }),
+  // });
 };
 
 const useCloudShellUrl = ({
