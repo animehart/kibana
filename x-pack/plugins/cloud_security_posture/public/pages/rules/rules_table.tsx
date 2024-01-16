@@ -14,12 +14,14 @@ import {
   useEuiTheme,
   EuiSwitch,
   EuiCheckbox,
+  EuiTableSelectionType,
 } from '@elastic/eui';
 import { i18n } from '@kbn/i18n';
 import { uniqBy } from 'lodash';
 import type { CspBenchmarkRulesWithStatus, RulesState } from './rules_container';
 import * as TEST_SUBJECTS from './test_subjects';
 import { useChangeCspRuleStatus } from './change_csp_rule_status';
+import { CspBenchmarkRule } from '@kbn/cloud-security-posture-plugin/common/types';
 
 export const RULES_ROWS_ENABLE_SWITCH_BUTTON = 'rules-row-enable-switch-button';
 export const RULES_ROW_SELECT_ALL_CURRENT_PAGE = 'cloud-security-fields-selector-item-all';
@@ -106,6 +108,16 @@ export const RulesTable = ({
     if (selectedRules.length >= items.length) setSelectAllRulesThisPage(true);
   }, [items.length, selectedRules.length]);
 
+  const onSelectionChange = (selectedRule: CspBenchmarkRulesWithStatus[]) => {
+    setSelectedRules(selectedRule);
+  };
+
+  const selection: EuiTableSelectionType<CspBenchmarkRulesWithStatus> = {
+    selectable: (rule: CspBenchmarkRulesWithStatus) =>
+      rule.metadata.benchmark.rule_number !== undefined,
+    onSelectionChange,
+  };
+
   const columns = useMemo(
     () =>
       getColumns({
@@ -143,6 +155,8 @@ export const RulesTable = ({
         onChange={onTableChange}
         itemId={(v) => v.metadata.id}
         rowProps={rowProps}
+        isSelectable={true}
+        selection={selection}
       />
     </>
   );
@@ -158,58 +172,58 @@ const getColumns = ({
   selectAllRulesThisPage,
   isArraySubset,
 }: GetColumnProps): Array<EuiTableFieldDataColumnType<CspBenchmarkRulesWithStatus>> => [
-  {
-    field: 'action',
-    name: (
-      <EuiCheckbox
-        id={RULES_ROW_SELECT_ALL_CURRENT_PAGE}
-        checked={isArraySubset(items, selectedRules) && selectAllRulesThisPage}
-        onChange={(e) => {
-          const uniqueSelectedRules = uniqBy([...selectedRules, ...items], 'metadata.id');
-          const onChangeSelectAllThisPageFn = () => {
-            setSelectedRules(uniqueSelectedRules);
-          };
-          const onChangeDeselectAllThisPageFn = () => {
-            setSelectedRules(
-              selectedRules.filter(
-                (element: CspBenchmarkRulesWithStatus) =>
-                  !items.find(
-                    (item: CspBenchmarkRulesWithStatus) =>
-                      item.metadata?.id === element.metadata?.id
-                  )
-              )
-            );
-          };
-          return isArraySubset(items, selectedRules) && selectAllRulesThisPage
-            ? onChangeDeselectAllThisPageFn()
-            : onChangeSelectAllThisPageFn();
-        }}
-      />
-    ),
-    width: '30px',
-    sortable: false,
-    render: (rules, item: CspBenchmarkRulesWithStatus) => {
-      return (
-        <EuiCheckbox
-          checked={selectedRules.some(
-            (e: CspBenchmarkRulesWithStatus) => e.metadata?.id === item.metadata?.id
-          )}
-          id={`cloud-security-fields-selector-item-${item.metadata?.id}`}
-          data-test-subj={`cloud-security-fields-selector-item-${item.metadata?.id}`}
-          onChange={(e) => {
-            const isChecked = e.target.checked;
-            return isChecked
-              ? setSelectedRules([...selectedRules, item])
-              : setSelectedRules(
-                  selectedRules.filter(
-                    (rule: CspBenchmarkRulesWithStatus) => rule.metadata?.id !== item.metadata?.id
-                  )
-                );
-          }}
-        />
-      );
-    },
-  },
+  // {
+  //   field: 'action',
+  //   name: (
+  //     <EuiCheckbox
+  //       id={RULES_ROW_SELECT_ALL_CURRENT_PAGE}
+  //       checked={isArraySubset(items, selectedRules) && selectAllRulesThisPage}
+  //       onChange={(e) => {
+  //         const uniqueSelectedRules = uniqBy([...selectedRules, ...items], 'metadata.id');
+  //         const onChangeSelectAllThisPageFn = () => {
+  //           setSelectedRules(uniqueSelectedRules);
+  //         };
+  //         const onChangeDeselectAllThisPageFn = () => {
+  //           setSelectedRules(
+  //             selectedRules.filter(
+  //               (element: CspBenchmarkRulesWithStatus) =>
+  //                 !items.find(
+  //                   (item: CspBenchmarkRulesWithStatus) =>
+  //                     item.metadata?.id === element.metadata?.id
+  //                 )
+  //             )
+  //           );
+  //         };
+  //         return isArraySubset(items, selectedRules) && selectAllRulesThisPage
+  //           ? onChangeDeselectAllThisPageFn()
+  //           : onChangeSelectAllThisPageFn();
+  //       }}
+  //     />
+  //   ),
+  //   width: '30px',
+  //   sortable: false,
+  //   render: (rules, item: CspBenchmarkRulesWithStatus) => {
+  //     return (
+  //       <EuiCheckbox
+  //         checked={selectedRules.some(
+  //           (e: CspBenchmarkRulesWithStatus) => e.metadata?.id === item.metadata?.id
+  //         )}
+  //         id={`cloud-security-fields-selector-item-${item.metadata?.id}`}
+  //         data-test-subj={`cloud-security-fields-selector-item-${item.metadata?.id}`}
+  //         onChange={(e) => {
+  //           const isChecked = e.target.checked;
+  //           return isChecked
+  //             ? setSelectedRules([...selectedRules, item])
+  //             : setSelectedRules(
+  //                 selectedRules.filter(
+  //                   (rule: CspBenchmarkRulesWithStatus) => rule.metadata?.id !== item.metadata?.id
+  //                 )
+  //               );
+  //         }}
+  //       />
+  //     );
+  //   },
+  // },
   {
     field: 'metadata.benchmark.rule_number',
     name: i18n.translate('xpack.csp.rules.rulesTable.ruleNumberColumnLabel', {
