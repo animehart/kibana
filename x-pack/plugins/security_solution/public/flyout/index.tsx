@@ -41,6 +41,8 @@ import type { HostPanelExpandableFlyoutProps } from './entity_details/host_right
 import { HostPanel, HostPanelKey, HostPreviewPanelKey } from './entity_details/host_right';
 import type { HostDetailsExpandableFlyoutProps } from './entity_details/host_details_left';
 import { HostDetailsPanel, HostDetailsPanelKey } from './entity_details/host_details_left';
+import { CspLeftPanel } from '../cloud_security_posture/components/csp_details';
+import { CspDetailsProvider } from '../cloud_security_posture/components/csp_details/context';
 
 /**
  * List of all panels that will be used within the document details expandable flyout.
@@ -130,6 +132,19 @@ const expandableFlyoutDocumentsPanels: ExpandableFlyoutProps['registeredPanels']
   {
     key: NetworkPanelKey,
     component: (props) => <NetworkPanel {...(props as NetworkExpandableFlyoutProps).params} />,
+  },
+  {
+    key: 'CspPanelKey',
+    // component: (props) => <CspLeftPanel {...(props as any).params} />,
+    // component: (props) => (
+    //   <CspDetailsProvider {...(props as DocumentDetailsProps).params}>
+    //     <CspLeftPanel path={props.path as DocumentDetailsProps['path']} />
+    //   </CspDetailsProvider>
+    component: (props) => (
+      <CspDetailsProvider {...(props as DocumentDetailsProps).params}>
+        <CspLeftPanel params={props.params as DocumentDetailsProps['params']} />
+      </CspDetailsProvider>
+    ),
   },
 ];
 

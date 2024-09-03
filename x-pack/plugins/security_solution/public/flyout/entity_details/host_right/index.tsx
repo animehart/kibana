@@ -9,6 +9,7 @@ import React, { useCallback, useMemo } from 'react';
 import type { FlyoutPanelProps } from '@kbn/expandable-flyout';
 import { useExpandableFlyoutApi } from '@kbn/expandable-flyout';
 
+import { useCspSetupStatusApi } from '@kbn/cloud-security-posture/src/hooks/use_csp_setup_status_api';
 import { FlyoutLoading, FlyoutNavigation } from '@kbn/security-solution-common';
 import { useRefetchQueryById } from '../../../entity_analytics/api/hooks/use_refetch_query_by_id';
 import { RISK_INPUTS_TAB_QUERY_ID } from '../../../entity_analytics/components/entity_details_flyout/tabs/risk_inputs/risk_inputs_tab';
@@ -92,6 +93,8 @@ export const HostPanel = ({
     { onSuccess: refetchRiskScore }
   );
 
+  const hasMisconfigurationFindings = useCspSetupStatusApi().data?.hasMisconfigurationsFindings;
+
   useQueryInspector({
     deleteQuery,
     inspect: inspectRiskScore,
@@ -114,10 +117,11 @@ export const HostPanel = ({
           scopeId,
           isRiskScoreExist,
           path: tab ? { tab } : undefined,
+          isMisconfigurationFindingsExist: hasMisconfigurationFindings,
         },
       });
     },
-    [telemetry, openLeftPanel, hostName, isRiskScoreExist, scopeId]
+    [telemetry, openLeftPanel, hostName, scopeId, isRiskScoreExist, hasMisconfigurationFindings]
   );
 
   const openDefaultPanel = useCallback(() => openTabPanel(), [openTabPanel]);

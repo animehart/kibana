@@ -156,7 +156,7 @@ export const UserPanel = ({
         return (
           <>
             <FlyoutNavigation
-              flyoutIsExpandable={!isPreviewMode && hasUserDetailsData}
+              flyoutIsExpandable={true}
               expandDetails={openPanelFirstTab}
             />
             <UserPanelHeader

@@ -6,47 +6,42 @@
  */
 
 import { EuiTab, EuiTabs, useEuiBackgroundColor } from '@elastic/eui';
-import type { ReactElement, VFC } from 'react';
+import type { FC } from 'react';
 import React, { memo } from 'react';
 import { css } from '@emotion/react';
 import { FlyoutHeader } from '@kbn/security-solution-common';
-
-export type LeftPanelTabsType = Array<{
-  id: EntityDetailsLeftPanelTab;
-  'data-test-subj': string;
-  name: ReactElement;
-  content: React.ReactElement;
-}>;
-
-export enum EntityDetailsLeftPanelTab {
-  RISK_INPUTS = 'risk_inputs',
-  OKTA = 'okta_document',
-  ENTRA = 'entra_document',
-  CSP_INSIGHTS = 'csp_insights',
-}
+import type { LeftPanelPaths } from '.';
+import type { LeftPanelTabType } from './tabs';
+// import { getField } from '../shared/utils';
+// import { EventKind } from '../shared/constants/event_kinds';
+// import { useDocumentDetailsContext } from '../shared/context';
 
 export interface PanelHeaderProps {
   /**
    * Id of the tab selected in the parent component to display its content
    */
-  selectedTabId: EntityDetailsLeftPanelTab;
+  selectedTabId: LeftPanelPaths;
   /**
    * Callback to set the selected tab id in the parent component
+   * @param selected
    */
-  setSelectedTabId: (selected: EntityDetailsLeftPanelTab) => void;
+  setSelectedTabId: (selected: LeftPanelPaths) => void;
   /**
-   * List of tabs to display in the header
+   * Tabs display at the top of left panel
    */
-  tabs: LeftPanelTabsType;
+  tabs: LeftPanelTabType[];
 }
 
 /**
  * Header at the top of the left section.
- * Displays the investigation and insights tabs (visualize is hidden for 8.9).
+ * Displays the insights, investigation and response tabs (visualize is hidden for 8.9+).
  */
-export const LeftPanelHeader: VFC<PanelHeaderProps> = memo(
+export const PanelHeaderCsp: FC<PanelHeaderProps> = memo(
   ({ selectedTabId, setSelectedTabId, tabs }) => {
-    const onSelectedTabChanged = (id: EntityDetailsLeftPanelTab) => setSelectedTabId(id);
+    // const { getFieldsData } = useDocumentDetailsContext();
+    // const isEventKindSignal = getField(getFieldsData('event.kind')) === EventKind.signal;
+
+    const onSelectedTabChanged = (id: LeftPanelPaths) => setSelectedTabId(id);
     const renderTabs = tabs.map((tab, index) => (
       <EuiTab
         onClick={() => onSelectedTabChanged(tab.id)}
@@ -66,7 +61,7 @@ export const LeftPanelHeader: VFC<PanelHeaderProps> = memo(
           border-block-end: none !important;
         `}
       >
-        <EuiTabs size="l" expand>
+        <EuiTabs size="l" expand={true}>
           {renderTabs}
         </EuiTabs>
       </FlyoutHeader>
@@ -74,4 +69,4 @@ export const LeftPanelHeader: VFC<PanelHeaderProps> = memo(
   }
 );
 
-LeftPanelHeader.displayName = 'LeftPanelHeader';
+PanelHeaderCsp.displayName = 'PanelHeader';
