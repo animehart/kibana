@@ -105,6 +105,8 @@ const insightsButtons: EuiButtonGroupOptionProps[] = [
 interface Finding {
   result: string;
   rule: string;
+  rule_id: string;
+  resource_id: string;
 }
 
 /**
@@ -125,66 +127,20 @@ export const InsightsTabCsp = memo(({ name }: { name: string }) => {
   //   const rows = useMemo(() => getRowsFromPages(data?.pages), [data?.pages]);
   const passedFindings = data?.count.passed || 0;
   const failedFindings = data?.count.failed || 0;
-  console.log(data)
-  const rows = data?.page?.map((finding) => ({
-    result: finding?.raw?._source?.result.evaluation,
-    rule: finding?.raw?._source?.rule.name,
-  }));
+
+  const rows: Finding[] =
+    data?.page?.map((finding: Finding) => ({
+      result: finding?.raw?._source?.result.evaluation,
+      rule: finding?.raw?._source?.rule.name,
+      rule_id: finding?.raw?._source?.rule.id,
+      resource_id: finding?.raw?._source?.resource.id,
+    })) || [];
 
   const rowsDatagrid = data?.page?.map((finding) => ({
     link: <EuiIcon type={'popout'} />,
     result: <CspEvaluationBadge type={finding?.raw?._source?.result.evaluation} />,
     rule: finding?.raw?._source?.rule.name,
   }));
-
-  const columns: Array<EuiBasicTableColumn<Finding>> = [
-    {
-      field: 'result',
-      render: (status: Finding['result']) => <EuiIcon type={'popout'} />,
-      name: '',
-      width: '5%',
-    },
-    {
-      field: 'result',
-      render: (status: Finding['result']) => <CspEvaluationBadge type={status} />,
-      name: 'Result',
-      width: '10%',
-    },
-    {
-      field: 'rule',
-      name: 'Rule',
-      width: '90%',
-    },
-  ];
-
-  const columnsDataGrid = [
-    {
-      id: 'link',
-      displayAsText: ' ',
-      initialWidth: 40,
-    },
-    {
-      id: 'result',
-      displayAsText: 'Result',
-      initialWidth: 70,
-    },
-    {
-      id: 'rule',
-      displayAsText: 'Rule',
-      initialWidth: 800,
-    },
-  ];
-
-  const findings: Finding[] = [
-    {
-      result: 'pass',
-      rule: ' Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum',
-    },
-    {
-      result: 'fail',
-      rule: ' Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum Lorem Ipsum',
-    },
-  ];
 
   const [pageIndex, setPageIndex] = useState(0);
   const [pageSize, setPageSize] = useState(10);
@@ -223,14 +179,15 @@ export const InsightsTabCsp = memo(({ name }: { name: string }) => {
       setPageSize(pageSize);
     }
   };
-  const [visibleColumns, setVisibleColumns] = useState(
-    columnsDataGrid.map(({ id }) => id) // initialize to the full set of columns
-  );
 
   const navToFindings = useNavigateFindings();
 
   const navToFindingsByHostName = (hostName: string) => {
     navToFindings({ 'host.name': hostName }, ['rule.name']);
+  };
+
+  const navToFindingsByRuleAndResourceId = (ruleId: string, resourceId: string) => {
+    navToFindings({ 'rule.id': ruleId, 'resource.id': resourceId });
   };
 
   //Pagination stuffs for datagrid
@@ -250,10 +207,54 @@ export const InsightsTabCsp = memo(({ name }: { name: string }) => {
     [setPagination]
   );
 
-  // const navToFindings = useNavigateFindings();
-  // const navToFindingsByHostName = (hostName: string) => {
-  //   navToFindings({ 'host.name': hostName });
-  // };
+  const columns: Array<EuiBasicTableColumn<Finding>> = [
+    {
+      field: 'rule_id',
+      name: '',
+      width: '5%',
+      render: (ruleId: Finding['rule_id'], finding: Finding) => (
+        <EuiLink
+          onClick={() => {
+            navToFindingsByRuleAndResourceId(ruleId, finding.resource_id);
+          }}
+        >
+          <EuiIcon type={'popout'} />
+        </EuiLink>
+      ),
+    },
+    {
+      field: 'result',
+      render: (status: Finding['result']) => <CspEvaluationBadge type={status} />,
+      name: 'Result',
+      width: '10%',
+    },
+    {
+      field: 'rule',
+      name: 'Rule',
+      width: '90%',
+    },
+  ];
+
+  const columnsDataGrid = [
+    {
+      id: 'link',
+      displayAsText: ' ',
+      initialWidth: 40,
+    },
+    {
+      id: 'result',
+      displayAsText: 'Result',
+      initialWidth: 70,
+    },
+    {
+      id: 'rule',
+      displayAsText: 'Rule',
+      initialWidth: 800,
+    },
+  ];
+  const [visibleColumns, setVisibleColumns] = useState(
+    columnsDataGrid.map(({ id }) => id) // initialize to the full set of columns
+  );
   return (
     <>
       <EuiButtonGroup
