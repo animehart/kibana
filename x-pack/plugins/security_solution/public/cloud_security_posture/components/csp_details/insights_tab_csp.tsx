@@ -29,28 +29,33 @@ const insightsButtons: EuiButtonGroupOptionProps[] = [
 /**
  * Insights view displayed in the document details expandable flyout left section
  */
-export const InsightsTabCsp = memo(({ name }: { name: string }) => {
-  const panels = useExpandableFlyoutState();
-  const activeInsightsId = panels.left?.path?.subTab ?? 'misconfigurationTabId';
+export const InsightsTabCsp = memo(
+  ({ name, fieldName }: { name: string; fieldName: 'host.name' | 'user.name' }) => {
+    const panels = useExpandableFlyoutState();
+    const activeInsightsId = panels.left?.path?.subTab ?? 'misconfigurationTabId';
 
-  return (
-    <>
-      <EuiButtonGroup
-        color="primary"
-        legend={i18n.translate('xpack.securitySolution.flyout.left.insights.optionsButtonGroups', {
-          defaultMessage: 'Insights options',
-        })}
-        options={insightsButtons}
-        idSelected={activeInsightsId}
-        onChange={() => {}}
-        buttonSize="compressed"
-        isFullWidth
-        data-test-subj={'insightButtonGroupsTestId'}
-      />
-      <EuiSpacer size="xl" />
-      <MisconfigurationFindingsDetailsTable fieldName={'host.name'} queryName={name} />
-    </>
-  );
-});
+    return (
+      <>
+        <EuiButtonGroup
+          color="primary"
+          legend={i18n.translate(
+            'xpack.securitySolution.flyout.left.insights.optionsButtonGroups',
+            {
+              defaultMessage: 'Insights options',
+            }
+          )}
+          options={insightsButtons}
+          idSelected={activeInsightsId}
+          onChange={() => {}}
+          buttonSize="compressed"
+          isFullWidth
+          data-test-subj={'insightButtonGroupsTestId'}
+        />
+        <EuiSpacer size="xl" />
+        <MisconfigurationFindingsDetailsTable fieldName={fieldName} queryName={name} />
+      </>
+    );
+  }
+);
 
 InsightsTabCsp.displayName = 'InsightsTab';

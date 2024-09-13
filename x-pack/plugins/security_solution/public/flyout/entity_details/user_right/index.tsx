@@ -9,6 +9,9 @@ import React, { useCallback, useMemo } from 'react';
 import type { FlyoutPanelProps } from '@kbn/expandable-flyout';
 import { useExpandableFlyoutApi } from '@kbn/expandable-flyout';
 import { FlyoutLoading, FlyoutNavigation } from '@kbn/security-solution-common/src/flyout';
+import { buildEntityFlyoutPreviewQuery } from '@kbn/cloud-security-posture-common';
+import { useCspSetupStatusApi } from '@kbn/cloud-security-posture/src/hooks/use_csp_setup_status_api';
+import { useMisconfigurationPreview } from '@kbn/cloud-security-posture/src/hooks/use_misconfiguration_preview';
 import { useRefetchQueryById } from '../../../entity_analytics/api/hooks/use_refetch_query_by_id';
 import type { Refetch } from '../../../common/types';
 import { RISK_INPUTS_TAB_QUERY_ID } from '../../../entity_analytics/components/entity_details_flyout/tabs/risk_inputs/risk_inputs_tab';
@@ -94,6 +97,22 @@ export const UserPanel = ({
     { onSuccess: refetchRiskScore }
   );
 
+  const hasMisconfigurationFindingsIndex =
+    useCspSetupStatusApi().data?.hasMisconfigurationsFindings || false;
+
+  const { data } = useMisconfigurationPreview({
+    query: buildEntityFlyoutPreviewQuery('user.name', userName),
+    sort: [],
+    enabled: true,
+    pageSize: 1,
+    ignore_unavailable: true,
+  });
+
+  const passedFindings = data?.count.passed || 0;
+  const failedFindings = data?.count.failed || 0;
+
+  const hasMisconfigurationFindingsForThisQuery = passedFindings > 0 || failedFindings > 0;
+
   useQueryInspector({
     deleteQuery,
     inspect,
@@ -119,11 +138,22 @@ export const UserPanel = ({
             name: userName,
             email,
           },
+          isMisconfigurationFindingsIndexExist: hasMisconfigurationFindingsIndex,
+          isMisconfigurationFindingsForThisQueryExist: hasMisconfigurationFindingsForThisQuery,
         },
         path: tab ? { tab } : undefined,
       });
     },
-    [telemetry, openLeftPanel, userRiskData?.user?.risk, userName, email, scopeId]
+    [
+      telemetry,
+      openLeftPanel,
+      userRiskData?.user?.risk,
+      scopeId,
+      userName,
+      email,
+      hasMisconfigurationFindingsIndex,
+      hasMisconfigurationFindingsForThisQuery,
+    ]
   );
 
   const openPanelFirstTab = useCallback(() => openPanelTab(), [openPanelTab]);
@@ -156,7 +186,11 @@ export const UserPanel = ({
         return (
           <>
             <FlyoutNavigation
-              flyoutIsExpandable={!isPreviewMode && hasUserDetailsData}
+              flyoutIsExpandable={
+                !isPreviewMode &&
+                (hasUserDetailsData ||
+                  (hasMisconfigurationFindingsIndex && hasMisconfigurationFindingsForThisQuery))
+              }
               expandDetails={openPanelFirstTab}
             />
             <UserPanelHeader

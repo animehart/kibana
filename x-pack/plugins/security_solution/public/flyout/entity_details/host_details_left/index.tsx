@@ -57,7 +57,7 @@ export const HostDetailsPanel = ({
     // Determine if the Insights tab should be included
     const insightsTab =
       isMisconfigurationFindingsIndexExist && isMisconfigurationFindingsForThisQueryExist
-        ? [getInsightsInputTab({ name })]
+        ? [getInsightsInputTab({ name, fieldName: 'host.name' })]
         : [];
     return [[...riskScoreTab, ...insightsTab], EntityDetailsLeftPanelTab.RISK_INPUTS, () => {}];
   }, [

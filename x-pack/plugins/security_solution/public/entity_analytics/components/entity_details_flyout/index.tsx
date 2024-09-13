@@ -28,7 +28,13 @@ export const getRiskInputTab = ({ entityType, entityName, scopeId }: RiskInputsT
   content: <RiskInputsTab entityType={entityType} entityName={entityName} scopeId={scopeId} />,
 });
 
-export const getInsightsInputTab = ({ name }: { name: string }) => ({
+export const getInsightsInputTab = ({
+  name,
+  fieldName,
+}: {
+  name: string;
+  fieldName: 'host.name' | 'user.name';
+}) => ({
   id: EntityDetailsLeftPanelTab.CSP_INSIGHTS,
   'data-test-subj': INSIGHTS_TAB_TEST_ID,
   name: (
@@ -37,5 +43,5 @@ export const getInsightsInputTab = ({ name }: { name: string }) => ({
       defaultMessage="Insights"
     />
   ),
-  content: <InsightsTabCsp name={name} />,
+  content: <InsightsTabCsp name={name} fieldName={fieldName} />,
 });

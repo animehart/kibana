@@ -28,6 +28,8 @@ export interface UserDetailsPanelProps extends Record<string, unknown> {
   user: UserParam;
   path?: PanelPath;
   scopeId: string;
+  isMisconfigurationFindingsIndexExist?: boolean;
+  isMisconfigurationFindingsForThisQueryExist?: boolean;
 }
 export interface UserDetailsExpandableFlyoutProps extends FlyoutPanelProps {
   key: 'user_details';
@@ -40,10 +42,27 @@ export const UserDetailsPanel = ({
   user,
   path,
   scopeId,
+  isMisconfigurationFindingsIndexExist,
+  isMisconfigurationFindingsForThisQueryExist,
 }: UserDetailsPanelProps) => {
   const managedUser = useManagedUser(user.name, user.email);
-  const tabs = useTabs(managedUser.data, user.name, isRiskScoreExist, scopeId);
-  const { selectedTabId, setSelectedTabId } = useSelectedTab(isRiskScoreExist, user, tabs, path);
+  const tabs = useTabs(
+    managedUser.data,
+    user.name,
+    isRiskScoreExist,
+    scopeId,
+    isMisconfigurationFindingsIndexExist,
+    isMisconfigurationFindingsForThisQueryExist
+  );
+
+  const { selectedTabId, setSelectedTabId } = useSelectedTab(
+    isRiskScoreExist,
+    user,
+    tabs,
+    path,
+    isMisconfigurationFindingsIndexExist,
+    isMisconfigurationFindingsForThisQueryExist
+  );
 
   if (managedUser.isLoading) return <FlyoutLoading />;
 
@@ -67,7 +86,9 @@ const useSelectedTab = (
   isRiskScoreExist: boolean,
   user: UserParam,
   tabs: LeftPanelTabsType,
-  path: PanelPath | undefined
+  path: PanelPath | undefined,
+  isMisconfigurationFindingsIndexExist?: boolean,
+  isMisconfigurationFindingsForThisQueryExist?: boolean
 ) => {
   const { openLeftPanel } = useExpandableFlyoutApi();
 
@@ -87,6 +108,8 @@ const useSelectedTab = (
       params: {
         user,
         isRiskScoreExist,
+        isMisconfigurationFindingsIndexExist,
+        isMisconfigurationFindingsForThisQueryExist,
       },
     });
   };
