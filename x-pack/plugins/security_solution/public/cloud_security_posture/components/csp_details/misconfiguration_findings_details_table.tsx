@@ -5,8 +5,8 @@
  * 2.0.
  */
 
-import React, { memo, useEffect, useState } from 'react';
-import type { Criteria, EuiBasicTableColumn } from '@elastic/eui';
+import React, { memo, useCallback, useEffect, useState } from 'react';
+import type { Criteria, EuiBasicTableColumn, EuiTableSortingType } from '@elastic/eui';
 import { EuiSpacer, EuiPanel, EuiText, EuiBasicTable, EuiIcon } from '@elastic/eui';
 import { useMisconfigurationFindings } from '@kbn/cloud-security-posture/src/hooks/use_misconfiguration_findings';
 import { i18n } from '@kbn/i18n';
@@ -106,6 +106,15 @@ export const MisconfigurationFindingsDetailsTable = memo(
 
     const [pageIndex, setPageIndex] = useState(0);
     const [pageSize, setPageSize] = useState(10);
+    const [sortField, setSortField] = useState<keyof MisconfigurationFindingDetailFields>('result');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
+
+    const sorting: EuiTableSortingType<MisconfigurationFindingDetailFields> = {
+      sort: {
+        field: sortField,
+        direction: sortDirection,
+      },
+    };
 
     const findingsPagination = (findings: MisconfigurationFindingDetailFields[]) => {
       let pageOfItems;
@@ -134,14 +143,21 @@ export const MisconfigurationFindingsDetailsTable = memo(
       totalItemCount,
       pageSizeOptions: [10, 25, 100],
     };
-
-    const onTableChange = ({ page }: Criteria<MisconfigurationFindingDetailFields>) => {
-      if (page) {
-        const { index, size } = page;
-        setPageIndex(index);
-        setPageSize(size);
-      }
-    };
+    const onTableChange = useCallback(
+      ({ page, sort }: Criteria<MisconfigurationFindingDetailFields>) => {
+        if (page) {
+          const { index, size } = page;
+          setPageIndex(index);
+          setPageSize(size);
+        }
+        if (sort) {
+          const { field: fieldSort, direction } = sort;
+          setSortField(fieldSort);
+          setSortDirection(direction);
+        }
+      },
+      []
+    );
 
     const getNavUrlParams = useGetNavigationUrlParams();
 
@@ -198,6 +214,7 @@ export const MisconfigurationFindingsDetailsTable = memo(
           }
         ),
         width: `${resultWidth}px`,
+        sortable: true,
       },
       {
         field: 'rule',
@@ -209,6 +226,7 @@ export const MisconfigurationFindingsDetailsTable = memo(
           }
         ),
         width: `calc(100% - ${linkWidth + resultWidth}px)`,
+        sortable: true,
       },
     ];
 
@@ -245,6 +263,7 @@ export const MisconfigurationFindingsDetailsTable = memo(
             pagination={pagination}
             onChange={onTableChange}
             data-test-subj={'securitySolutionFlyoutMisconfigurationFindingsTable'}
+            sorting={sorting}
           />
         </EuiPanel>
       </>

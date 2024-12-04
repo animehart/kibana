@@ -86,6 +86,8 @@ export const buildMisconfigurationsFindingsQuery = (
     ignore_unavailable: true,
     query: buildMisconfigurationsFindingsQueryWithFilters(query, mutedRulesFilterQuery),
     _source: MISCONFIGURATIONS_SOURCE_FIELDS,
+    // ADD SORT HERE
+    sort: [{ 'result.evaluation': 'desc' }],
   };
 };
 
