@@ -34,8 +34,21 @@ const LazyCspCustomAssets = lazy(
   () => import('./components/fleet_extensions/custom_assets_extension')
 );
 
-const LazyCspFindingsMisconfigurationFlyout = lazy(
+export const LazyCspFindingsMisconfigurationFlyout = lazy(
   () => import('./pages/configurations/findings_flyout/findings_flyout')
+);
+export const LazyCspFindingsMisconfigurationFlyoutHeader = lazy(
+  () => import('./pages/configurations/findings_flyout/findings_right/header')
+);
+export const LazyCspFindingsMisconfigurationFlyoutBody = lazy(() =>
+  import('./pages/configurations/findings_flyout/findings_flyout').then((mod) => ({
+    default: mod.FindingsRuleFlyoutBody,
+  }))
+);
+export const LazyCspFindingsMisconfigurationFlyoutFooter = lazy(() =>
+  import('./pages/configurations/findings_flyout/findings_flyout').then((mod) => ({
+    default: mod.FindingsRuleFlyoutFooter,
+  }))
 );
 
 const CspRouterLazy = lazy(() => import('./application/csp_router'));
@@ -108,12 +121,18 @@ export class CspPlugin
 
     return {
       getCloudSecurityPostureRouter: () => App,
-      getCloudSecurityPostureMisconfigurationFlyout: ({
-        ruleId,
-        resourceId,
-      }: FindingMisconfigurationFlyoutProps) => (
-        <LazyCspFindingsMisconfigurationFlyout ruleId={ruleId} resourceId={resourceId} />
-      ),
+      getCloudSecurityPostureMisconfigurationFlyout: () => {
+        return {
+          Component: (props: FindingMisconfigurationFlyoutProps) => (
+            <LazyCspFindingsMisconfigurationFlyout {...props}>
+              {props.children}
+            </LazyCspFindingsMisconfigurationFlyout>
+          ),
+          Header: (props) => <LazyCspFindingsMisconfigurationFlyoutHeader {...props} />,
+          Body: (props) => <LazyCspFindingsMisconfigurationFlyoutBody {...props} />,
+          Footer: (props) => <LazyCspFindingsMisconfigurationFlyoutFooter {...props} />,
+        };
+      },
     };
   }
 

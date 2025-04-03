@@ -5,13 +5,19 @@
  * 2.0.
  */
 
+import React from 'react';
 import type { FindingMisconfigurationFlyoutProps } from '@kbn/cloud-security-posture';
 import { useKibana } from '../../../common/lib/kibana';
 
-export const FindingsMisconfigurationPanel = ({
-  ruleId,
-  resourceId,
-}: FindingMisconfigurationFlyoutProps) => {
+// export const FindingsMisconfigurationPanel = ({
+//   ruleId,
+//   resourceId,
+// }: FindingMisconfigurationFlyoutProps) => {
+//   const { cloudSecurityPosture } = useKibana().services;
+//   return cloudSecurityPosture.getCloudSecurityPostureMisconfigurationFlyout();
+// };
+
+export const FindingsMisconfigurationFull = (props) => {
   const { cloudSecurityPosture } = useKibana().services;
-  return cloudSecurityPosture.getCloudSecurityPostureMisconfigurationFlyout({ ruleId, resourceId });
+  return cloudSecurityPosture.getCloudSecurityPostureMisconfigurationFlyoutFull().Header(props);
 };
