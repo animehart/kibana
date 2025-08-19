@@ -32,7 +32,10 @@ export interface MisconfigurationFindingTableDetailsFields {
   [MISCONFIGURATION.RULE_NAME]: string;
 }
 
-export type MisconfigurationFindingDetailFields = Pick<CspFinding, 'rule' | 'resource'> &
+export type MisconfigurationFindingDetailFields = Pick<
+  CspFinding,
+  'rule' | 'resource' | 'observer'
+> &
   MisconfigurationFindingTableDetailsFields;
 
 export const useMisconfigurationFindings = (options: UseCspOptions) => {
@@ -58,15 +61,39 @@ export const useMisconfigurationFindings = (options: UseCspOptions) => {
       );
       if (!aggregations && options.ignore_unavailable === false)
         throw new Error('expected aggregations to be defined');
+      // return {
+      //   count: getMisconfigurationAggregationCount(aggregations?.count.buckets),
+      //   rows: hits.hits.map((finding) => ({
+      //     observer: finding?._source?.observer.vendor,
+      //     rule: finding?._source?.rule,
+      //     resource: finding?._source?.resource,
+      //     [MISCONFIGURATION.RULE_NAME]: finding?._source?.rule?.name,
+      //     [MISCONFIGURATION.RESULT_EVALUATION]: finding._source?.result?.evaluation,
+      //   })) as MisconfigurationFindingDetailFields[],
+      // };
+      const rows = hits.hits.map((finding) => ({
+        observer: finding?._source?.observer?.vendor,
+        rule: finding?._source?.rule,
+        resource: finding?._source?.resource,
+        [MISCONFIGURATION.RULE_NAME]: finding?._source?.rule?.name,
+        [MISCONFIGURATION.RESULT_EVALUATION]: finding._source?.result?.evaluation,
+      })) as MisconfigurationFindingDetailFields[];
+
+      // Group by observer.vendor
+      const groupedByVendor: Record<string, MisconfigurationFindingDetailFields[]> = {};
+
+      for (const row of rows) {
+        const vendor = (row.observer as string) || 'Unknown';
+        if (!groupedByVendor[vendor]) {
+          groupedByVendor[vendor] = [];
+        }
+        groupedByVendor[vendor].push(row);
+      }
 
       return {
-        count: getMisconfigurationAggregationCount(aggregations?.count.buckets),
-        rows: hits.hits.map((finding) => ({
-          rule: finding?._source?.rule,
-          resource: finding?._source?.resource,
-          [MISCONFIGURATION.RULE_NAME]: finding?._source?.rule?.name,
-          [MISCONFIGURATION.RESULT_EVALUATION]: finding._source?.result?.evaluation,
-        })) as MisconfigurationFindingDetailFields[],
+        count: getMisconfigurationAggregationCount(aggregations?.count?.buckets),
+        rows,
+        groupedByVendor,
       };
     },
     {

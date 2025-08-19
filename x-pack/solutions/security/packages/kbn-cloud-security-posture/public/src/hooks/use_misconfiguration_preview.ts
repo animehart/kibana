@@ -32,7 +32,7 @@ export const useMisconfigurationPreview = (options: UseCspOptions) => {
     ['csp_misconfiguration_preview', { params: options }, rulesStates],
     async () => {
       const {
-        rawResponse: { aggregations },
+        rawResponse: { hits, aggregations },
       } = await lastValueFrom(
         data.search.search<LatestFindingsRequest, LatestFindingsResponse>({
           params: buildMisconfigurationsFindingsQuery(
@@ -44,8 +44,10 @@ export const useMisconfigurationPreview = (options: UseCspOptions) => {
       );
       if (!aggregations && options.ignore_unavailable === false)
         throw new Error('expected aggregations to be defined');
+
       return {
         count: getMisconfigurationAggregationCount(aggregations?.count?.buckets),
+        vendor: aggregations?.by_observer_vendor?.buckets.map((bucket) => bucket.key) || [],
       };
     },
     {

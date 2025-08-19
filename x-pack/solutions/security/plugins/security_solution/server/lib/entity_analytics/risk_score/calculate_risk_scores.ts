@@ -44,6 +44,18 @@ import type {
 } from '../types';
 import { RIEMANN_ZETA_VALUE, RIEMANN_ZETA_S_VALUE } from './constants';
 import { getPainlessScripts, type PainlessScripts } from './painless';
+// import { EntitiesTypeStats } from '../../asset_inventory/telemetry/schema';
+// import type { AggregationResponse } from '../../asset_inventory/telemetry/collectors.ts/entities_type_stats_collector';
+// import {
+//   getEntitiesTypeStats,
+//   // getEntityTypeAggsQuery,
+//   // parseEntityTypeAggs,
+// } from '../../asset_inventory/telemetry/collectors/entities_type_stats_collector';
+// import { getEntityStats } from '../../asset_inventory/telemetry/collectors/entities_stats_collector';
+// import { getAssetCriticalityStats } from '../../asset_inventory/telemetry/collectors/asset_criticality_stats_collector';
+// import { getEntitySourceStats } from '../../asset_inventory/telemetry/collectors/entity_source_stats_collector';
+// import { getEntityStoreStats } from '../../asset_inventory/telemetry/collectors/entity_store_stats_collector';
+// import { getEntitySourceStats } from '../../asset_inventory/telemetry/collectors.ts/entity_source_stats_collector';
 
 const formatForResponse = ({
   bucket,
@@ -292,6 +304,18 @@ export const calculateRiskScores = async ({
     }
 
     const response = await esClient.search<never, CalculateRiskScoreAggregations>(request);
+    // const entityStats = await getEntityStats(esClient, '.entities.v1.latest*', logger);
+    // const entityTypeStats = await getEntitiesTypeStats(esClient, logger);
+    // const assetCriticalityStats = await getAssetCriticalityStats(esClient, logger);
+    // const entitySourceStats = await getEntitySourceStats(esClient, logger);
+    // const entityStoreStats = await getEntityStoreStats(esClient, logger);
+
+    // console.log('Hello')
+    // console.log(entityStats);
+    // console.log(entityTypeStats);
+    // console.log(assetCriticalityStats);
+    // console.log(entitySourceStats);
+    // console.log(entityStoreStats);
 
     if (debug) {
       logger.info(`Received Risk Score response:\n${JSON.stringify(response)}`);

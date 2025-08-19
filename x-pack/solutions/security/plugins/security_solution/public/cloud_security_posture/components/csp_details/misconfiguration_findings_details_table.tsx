@@ -149,7 +149,7 @@ export const MisconfigurationFindingsDetailsTable = memo(
       enabled: true,
       pageSize: 1,
     });
-
+console.log(data)
     const { passedFindings, failedFindings } = useHasMisconfigurations(field, value);
 
     const [pageIndex, setPageIndex] = useState(0);
