@@ -60,7 +60,9 @@ export const ThirdPartyIntegrationsPopover = ({ findingsType, buttonTestSubj }: 
       closePopover={closePopover}
       anchorPosition="downCenter"
     >
-      <EuiContextMenuPanel items={items} />
+      <div style={{ maxHeight: 350, overflowY: 'auto' }}>
+        <EuiContextMenuPanel items={items} />
+      </div>
     </EuiPopover>
   );
 };
