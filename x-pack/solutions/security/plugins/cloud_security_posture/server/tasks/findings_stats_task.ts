@@ -32,6 +32,7 @@ import {
 } from '../../common/constants';
 import { scheduleTaskSafe, removeTaskSafe } from '../lib/task_manager_util';
 import type { CspServerPluginStartServices } from '../types';
+import { ensureBenchmarkScoreIndexMapping } from '../create_indices/create_indices';
 import {
   stateSchemaByVersion,
   emptyState,
@@ -300,11 +301,21 @@ const getVulnStatsTrendQuery = (): SearchRequest => ({
   },
 });
 
-const getFindingsScoresByNamespaceIndexingPromises = (
+const getFindingsScoresByNamespaceIndexingPromises = async (
   esClient: ElasticsearchClient,
   scoresByNamespaceBuckets: ScoreAggregationResponse['score_by_namespace']['buckets'],
-  isCustomScore: boolean
+  isCustomScore: boolean,
+  logger: Logger
 ) => {
+  // Verify and fix index mapping if needed before attempting to index documents
+  const isMappingValid = await ensureBenchmarkScoreIndexMapping(esClient, logger);
+
+  if (!isMappingValid) {
+    // Return null to indicate this function should be skipped for this run
+    logger.info('Skipping findings scores indexing for this run due to index mapping issues');
+    return null;
+  }
+
   return scoresByNamespaceBuckets.flatMap((namespaceBucket) => {
     const namespace = namespaceBucket.key || 'unspecified'; // default fallback if key is empty
 
@@ -358,11 +369,21 @@ const getFindingsScoresByNamespaceIndexingPromises = (
   });
 };
 
-export const getVulnStatsTrendDocIndexingPromises = (
+export const getVulnStatsTrendDocIndexingPromises = async (
   esClient: ElasticsearchClient,
+  logger: Logger,
   vulnStatsAggs?: VulnSeverityAggs
 ) => {
   if (!vulnStatsAggs) return;
+
+  // Verify and fix index mapping if needed before attempting to index documents
+  const isMappingValid = await ensureBenchmarkScoreIndexMapping(esClient, logger);
+
+  if (!isMappingValid) {
+    // Return null to indicate this function should be skipped for this run
+    logger.info('Skipping vulnerability stats indexing for this run due to index mapping issues');
+    return null;
+  }
 
   const scoreByCloudAccount = Object.fromEntries(
     vulnStatsAggs.vulnerabilities_stats_by_cloud_account.buckets.map((accountScore) => {
@@ -435,26 +456,42 @@ export const aggregateLatestFindings = async (
       fullScoreIndexQueryResult.aggregations?.score_by_namespace.buckets || [];
 
     const findingsCustomScoresByNamespaceDocIndexingPromises =
-      getFindingsScoresByNamespaceIndexingPromises(esClient, customScoresByNamespaceBuckets, true);
+      await getFindingsScoresByNamespaceIndexingPromises(
+        esClient,
+        customScoresByNamespaceBuckets,
+        true,
+        logger
+      );
 
     const findingsFullScoresByNamespaceDocIndexingPromises =
-      getFindingsScoresByNamespaceIndexingPromises(esClient, fullScoresByNamespaceBuckets, false);
+      await getFindingsScoresByNamespaceIndexingPromises(
+        esClient,
+        fullScoresByNamespaceBuckets,
+        false,
+        logger
+      );
 
-    const vulnStatsTrendDocIndexingPromises = getVulnStatsTrendDocIndexingPromises(
+    const vulnStatsTrendDocIndexingPromises = await getVulnStatsTrendDocIndexingPromises(
       esClient,
+      logger,
       vulnStatsTrendIndexQueryResult.aggregations
     );
 
     const startIndexTime = performance.now();
 
-    // executing indexing commands
-    await Promise.all(
-      [
-        findingsCustomScoresByNamespaceDocIndexingPromises,
-        findingsFullScoresByNamespaceDocIndexingPromises,
-        vulnStatsTrendDocIndexingPromises,
-      ].filter(Boolean)
-    );
+    // executing indexing commands - filter out null values from skipped operations
+    const indexingPromises = [
+      findingsCustomScoresByNamespaceDocIndexingPromises,
+      findingsFullScoresByNamespaceDocIndexingPromises,
+      vulnStatsTrendDocIndexingPromises,
+    ].filter(Boolean); // Remove null values
+
+    if (indexingPromises.length === 0) {
+      logger.warn('All indexing operations were skipped for this run due to index mapping issues');
+      return 'warning';
+    }
+
+    await Promise.all(indexingPromises);
 
     const totalIndexTime = Number(performance.now() - startIndexTime).toFixed(2);
     logger.debug(

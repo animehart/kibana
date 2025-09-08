@@ -24,6 +24,28 @@ describe('createBenchmarkScoreIndex', () => {
   beforeEach(() => {
     logger = loggingSystemMock.createLogger();
     jest.resetAllMocks();
+
+    // Mock the new template verification functions
+    mockEsClient.indices.getIndexTemplate.mockResolvedValue({
+      index_templates: [{ name: 'test-template' } as IndicesGetIndexTemplateIndexTemplateItem],
+    });
+
+    // Mock mapping verification
+    mockEsClient.indices.getMapping.mockResolvedValue({
+      [BENCHMARK_SCORE_INDEX_DEFAULT_NS]: {
+        mappings: {
+          properties: {
+            namespace: { type: 'keyword' },
+            '@timestamp': { type: 'date' },
+            cluster_id: { type: 'keyword' },
+            'resource.id': { type: 'keyword' },
+          },
+        },
+      },
+    });
+
+    // Mock index existence check
+    mockEsClient.indices.exists.mockResolvedValue(false);
   });
 
   it('should delete old index template from prev verions first', async () => {
@@ -90,14 +112,25 @@ describe('createBenchmarkScoreIndex', () => {
       { serverless: { enabled: true }, enabled: true, enableExperimental: [] },
       logger
     );
+
+    // Should wait for template to be available
+    expect(mockEsClient.indices.getIndexTemplate).toHaveBeenCalledWith({
+      name: BENCHMARK_SCORE_INDEX_TEMPLATE_NAME,
+    });
+
     expect(mockEsClient.indices.create).toHaveBeenCalledTimes(1);
     expect(mockEsClient.indices.create).toHaveBeenCalledWith({
       index: BENCHMARK_SCORE_INDEX_DEFAULT_NS,
     });
     expect(mockEsClient.indices.putMapping).toHaveBeenCalledTimes(0);
+
+    // Should perform final verification
+    expect(mockEsClient.indices.getMapping).toHaveBeenCalledWith({
+      index: BENCHMARK_SCORE_INDEX_DEFAULT_NS,
+    });
   });
 
-  it('should updat index mapping if index exists', async () => {
+  it('should update index mapping if index exists and mapping is compatible', async () => {
     mockEsClient.indices.exists.mockResolvedValueOnce(true);
 
     await createBenchmarkScoreIndex(
@@ -105,7 +138,81 @@ describe('createBenchmarkScoreIndex', () => {
       { serverless: { enabled: true }, enabled: true, enableExperimental: [] },
       logger
     );
+
+    // Should wait for template to be available
+    expect(mockEsClient.indices.getIndexTemplate).toHaveBeenCalledWith({
+      name: BENCHMARK_SCORE_INDEX_TEMPLATE_NAME,
+    });
+
+    // Should check mapping compatibility
+    expect(mockEsClient.indices.getMapping).toHaveBeenCalledWith({
+      index: BENCHMARK_SCORE_INDEX_DEFAULT_NS,
+    });
+
     expect(mockEsClient.indices.create).toHaveBeenCalledTimes(0);
     expect(mockEsClient.indices.putMapping).toHaveBeenCalledTimes(1);
+  });
+
+  it('should recreate index if mapping is incompatible', async () => {
+    mockEsClient.indices.exists.mockResolvedValueOnce(true);
+
+    // Mock incompatible mapping - namespace as text instead of keyword
+    mockEsClient.indices.getMapping.mockResolvedValueOnce({
+      [BENCHMARK_SCORE_INDEX_DEFAULT_NS]: {
+        mappings: {
+          properties: {
+            namespace: { type: 'text' }, // Wrong type!
+            '@timestamp': { type: 'date' },
+          },
+        },
+      },
+    });
+
+    await createBenchmarkScoreIndex(
+      mockEsClient,
+      { serverless: { enabled: true }, enabled: true, enableExperimental: [] },
+      logger
+    );
+
+    // Should delete and recreate the index
+    expect(mockEsClient.indices.delete).toHaveBeenCalledWith({
+      index: BENCHMARK_SCORE_INDEX_DEFAULT_NS,
+    });
+    expect(mockEsClient.indices.create).toHaveBeenCalledWith({
+      index: BENCHMARK_SCORE_INDEX_DEFAULT_NS,
+    });
+  });
+
+  it('should throw error if final mapping verification fails', async () => {
+    mockEsClient.indices.exists.mockResolvedValueOnce(false);
+
+    // Mock final verification failure
+    mockEsClient.indices.getMapping
+      .mockResolvedValueOnce({
+        [BENCHMARK_SCORE_INDEX_DEFAULT_NS]: {
+          mappings: {
+            properties: {
+              namespace: { type: 'keyword' },
+            },
+          },
+        },
+      })
+      .mockResolvedValueOnce({
+        [BENCHMARK_SCORE_INDEX_DEFAULT_NS]: {
+          mappings: {
+            properties: {
+              namespace: { type: 'text' }, // Wrong type in final verification
+            },
+          },
+        },
+      });
+
+    await expect(
+      createBenchmarkScoreIndex(
+        mockEsClient,
+        { serverless: { enabled: true }, enabled: true, enableExperimental: [] },
+        logger
+      )
+    ).rejects.toThrow('Index mapping verification failed');
   });
 });

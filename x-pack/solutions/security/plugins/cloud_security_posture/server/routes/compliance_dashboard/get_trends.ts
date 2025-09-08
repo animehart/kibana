@@ -12,6 +12,7 @@ import { calculatePostureScore } from '../../../common/utils/helpers';
 import { BENCHMARK_SCORE_INDEX_DEFAULT_NS } from '../../../common/constants';
 import type { PosturePolicyTemplate, Stats } from '../../../common/types_old';
 import { toBenchmarkDocFieldKey } from '../../lib/mapping_field_util';
+import { verifyBenchmarkScoreIndexForQuery } from '../../create_indices/create_indices';
 
 interface FindingsDetails {
   total_findings: number;
@@ -173,6 +174,16 @@ export const getTrends = async (
   namespace: string = DEFAULT_NAMESPACE_STRING
 ): Promise<Trends> => {
   try {
+    // Verify that the benchmark score index has correct mapping before querying
+    const isMappingValid = await verifyBenchmarkScoreIndexForQuery(esClient, logger);
+
+    if (!isMappingValid) {
+      logger.warn(
+        'Benchmark score index mapping verification failed. Returning empty trends to prevent aggregation errors.'
+      );
+      return { trends: [], namespaces: [] };
+    }
+
     const trendsQueryResult = await esClient.search<unknown, ScoreTrendAggregateResponse>(
       getTrendsQuery(policyTemplate)
     );
