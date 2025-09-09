@@ -385,8 +385,8 @@ const waitForIndexTemplate = async (
 };
 
 /**
- * Verifies that the existing index mapping is compatible with the expected mapping.
- * Focuses on critical fields that could cause issues if they have wrong types.
+ * Verifies that the current index mapping matches ALL fields in the expected benchmarkScoreMapping.
+ * This comprehensive check ensures complete compatibility and prevents any race condition issues.
  */
 const verifyIndexMappingCompatibility = async (
   esClient: ElasticsearchClient,
@@ -395,7 +395,9 @@ const verifyIndexMappingCompatibility = async (
   logger: Logger
 ): Promise<boolean> => {
   try {
-    logger.info(`[MAPPING_CHECK] Starting mapping verification for index: ${indexName}`);
+    logger.info(
+      `[MAPPING_CHECK] Starting comprehensive mapping verification for index: ${indexName}`
+    );
 
     const response = await esClient.indices.getMapping({
       index: indexName,
@@ -407,26 +409,30 @@ const verifyIndexMappingCompatibility = async (
       return false;
     }
 
-    logger.info(`[MAPPING_CHECK] Current mapping retrieved, checking critical fields...`);
+    logger.info(`[MAPPING_CHECK] Verifying ALL fields in benchmarkScoreMapping...`);
 
-    // Check critical fields that are known to cause issues when they have wrong types
-    const criticalFields = ['namespace', '@timestamp', 'cluster_id', 'resource.id'];
+    // Check ALL fields from the expected mapping
+    const expectedFields = Object.keys(expectedMapping.properties || {});
     let hasIssues = false;
+    let checkedFieldsCount = 0;
+    let missingFieldsCount = 0;
+    let typeMismatchCount = 0;
 
-    for (const fieldPath of criticalFields) {
+    for (const fieldPath of expectedFields) {
+      checkedFieldsCount++;
       const expectedFieldType = getNestedProperty(expectedMapping.properties, fieldPath);
       const currentFieldType = getNestedProperty(currentMapping.properties, fieldPath);
 
-      logger.info(`[MAPPING_CHECK] Checking field: ${fieldPath}`);
-      logger.info(`[MAPPING_CHECK] Expected: ${JSON.stringify(expectedFieldType)}`);
-      logger.info(`[MAPPING_CHECK] Current: ${JSON.stringify(currentFieldType)}`);
+      logger.debug(`[MAPPING_CHECK] Checking field: ${fieldPath}`);
 
       // If we expect this field but it doesn't exist in current mapping
       if (expectedFieldType && !currentFieldType) {
         logger.warn(
-          `[MAPPING_CHECK] Critical field missing from index mapping: ${fieldPath} [Index: ${indexName}]`
+          `[MAPPING_CHECK] ❌ Field missing from index mapping: ${fieldPath} [Index: ${indexName}]`
         );
+        missingFieldsCount++;
         hasIssues = true;
+        continue;
       }
 
       // If both fields exist, check if their types are compatible
@@ -436,29 +442,35 @@ const verifyIndexMappingCompatibility = async (
 
         if (expectedType && currentType && expectedType !== currentType) {
           logger.warn(
-            `[MAPPING_CHECK] Field type mismatch for ${fieldPath}: expected ${expectedType}, got ${currentType} [Index: ${indexName}]`
+            `[MAPPING_CHECK] ❌ Field type mismatch for ${fieldPath}: expected ${expectedType}, got ${currentType} [Index: ${indexName}]`
           );
+          typeMismatchCount++;
           hasIssues = true;
+
+          // Special race condition detection for text fields that should be keyword
+          if (
+            expectedType === 'keyword' &&
+            currentType === 'text' &&
+            currentFieldType.fields?.keyword
+          ) {
+            logger.error(
+              `[MAPPING_CHECK] 🚨 RACE CONDITION DETECTED on field ${fieldPath}: text with keyword subfield pattern! [Index: ${indexName}]`
+            );
+            logger.error(
+              `[MAPPING_CHECK] This indicates documents were indexed before template was applied correctly.`
+            );
+          }
+        } else {
+          logger.debug(
+            `[MAPPING_CHECK] ✅ Field ${fieldPath} matches expected type: ${expectedType}`
+          );
         }
 
-        // Special check for namespace field - must be exactly keyword type
-        if (fieldPath === 'namespace') {
+        // Special validation for critical aggregation fields
+        if (['namespace', 'cluster_id', 'policy_template'].includes(fieldPath)) {
           if (currentType !== 'keyword') {
             logger.error(
-              `[MAPPING_CHECK] CRITICAL: namespace field MUST be keyword type for aggregations to work. Current type: ${currentType} [Index: ${indexName}]`
-            );
-            hasIssues = true;
-          } else {
-            logger.info(`[MAPPING_CHECK] ✅ namespace field is correctly set as keyword type`);
-          }
-
-          // Also check if it's a text field with keyword subfield (classic race condition symptom)
-          if (currentType === 'text' && currentFieldType.fields?.keyword) {
-            logger.error(
-              `[MAPPING_CHECK] RACE CONDITION DETECTED: namespace is text with keyword subfield. This will cause dashboard aggregation failures! [Index: ${indexName}]`
-            );
-            logger.error(
-              `[MAPPING_CHECK] This is the classic race condition where documents were indexed before template was applied.`
+              `[MAPPING_CHECK] 🚨 CRITICAL AGGREGATION FIELD: ${fieldPath} must be keyword type for dashboard aggregations. Current: ${currentType} [Index: ${indexName}]`
             );
             hasIssues = true;
           }
@@ -466,12 +478,24 @@ const verifyIndexMappingCompatibility = async (
       }
     }
 
+    // Summary logging
+    logger.info(`[MAPPING_CHECK] Mapping verification complete:`);
+    logger.info(`[MAPPING_CHECK] - Total fields checked: ${checkedFieldsCount}`);
+    logger.info(`[MAPPING_CHECK] - Missing fields: ${missingFieldsCount}`);
+    logger.info(`[MAPPING_CHECK] - Type mismatches: ${typeMismatchCount}`);
+
     if (hasIssues) {
-      logger.warn(`[MAPPING_CHECK] Index mapping has issues and needs fixing [Name: ${indexName}]`);
+      logger.warn(
+        `[MAPPING_CHECK] ❌ Index mapping has ${
+          missingFieldsCount + typeMismatchCount
+        } issues and needs fixing [Name: ${indexName}]`
+      );
       return false;
     }
 
-    logger.info(`[MAPPING_CHECK] Index mapping is compatible [Name: ${indexName}]`);
+    logger.info(
+      `[MAPPING_CHECK] ✅ All ${checkedFieldsCount} fields in mapping are correct [Name: ${indexName}]`
+    );
     return true;
   } catch (e) {
     logger.error(
@@ -577,71 +601,59 @@ export const ensureBenchmarkScoreIndexMapping = async (
         if (templateResponse.index_templates && templateResponse.index_templates.length > 0) {
           const template = templateResponse.index_templates[0];
           const templateMapping = template.index_template.template?.mappings;
-          const namespaceField = getNestedProperty(templateMapping?.properties, 'namespace');
 
           logger.info(
-            `[INDEX_FIX] Template found. Namespace field in template: ${JSON.stringify(
-              namespaceField
-            )}`
+            `[INDEX_FIX] Template found. Validating ALL fields against benchmarkScoreMapping...`
           );
 
-          if (namespaceField?.type === 'keyword') {
-            logger.info(
-              `[INDEX_FIX] Template has correct namespace mapping. Index will be created correctly.`
-            );
-          } else if (!namespaceField) {
-            logger.error(
-              `[INDEX_FIX] CRITICAL: Template is missing namespace field! This will cause race condition.`
-            );
-            logger.info(
-              `[INDEX_FIX] Attempting to fix template by updating it with correct mapping...`
-            );
+          // Check ALL fields from benchmarkScoreMapping in the template
+          const expectedFields = Object.keys(benchmarkScoreMapping.properties || {});
+          let templateHasIssues = false;
+          let templateMissingFields = 0;
+          let templateTypeMismatches = 0;
 
-            try {
-              // Update the template with the correct mapping
-              await esClient.indices.putIndexTemplate({
-                name: BENCHMARK_SCORE_INDEX_TEMPLATE_NAME,
-                index_patterns: BENCHMARK_SCORE_INDEX_PATTERN,
-                template: {
-                  mappings: benchmarkScoreMapping,
-                  settings: {
-                    index: {
-                      default_pipeline: scorePipelineIngestConfig.id,
-                    },
-                    lifecycle: { name: '' },
-                  },
-                },
-                _meta: {
-                  package: {
-                    name: CLOUD_SECURITY_POSTURE_PACKAGE_NAME,
-                  },
-                  managed_by: 'cloud_security_posture',
-                  managed: true,
-                },
-                priority: 500,
-              });
+          for (const fieldPath of expectedFields) {
+            const expectedFieldType = getNestedProperty(
+              benchmarkScoreMapping.properties,
+              fieldPath
+            );
+            const templateFieldType = getNestedProperty(templateMapping?.properties, fieldPath);
 
-              logger.info(`[INDEX_FIX] Successfully updated template with namespace field!`);
+            if (expectedFieldType && !templateFieldType) {
+              logger.warn(`[INDEX_FIX] ❌ Template missing field: ${fieldPath}`);
+              templateMissingFields++;
+              templateHasIssues = true;
+            } else if (expectedFieldType && templateFieldType) {
+              const expectedType = expectedFieldType.type;
+              const templateType = templateFieldType.type;
 
-              // Wait for template to be available
-              await waitForIndexTemplate(esClient, BENCHMARK_SCORE_INDEX_TEMPLATE_NAME, logger);
-            } catch (e) {
-              logger.error(`[INDEX_FIX] Failed to update template: ${e}`);
-              logger.error(
-                `[INDEX_FIX] Template fix failed. Restart Kibana or manually update template.`
-              );
+              if (expectedType && templateType && expectedType !== templateType) {
+                logger.warn(
+                  `[INDEX_FIX] ❌ Template field type mismatch for ${fieldPath}: expected ${expectedType}, got ${templateType}`
+                );
+                templateTypeMismatches++;
+                templateHasIssues = true;
+              }
             }
+          }
+
+          logger.info(`[INDEX_FIX] Template validation complete:`);
+          logger.info(`[INDEX_FIX] - Total fields expected: ${expectedFields.length}`);
+          logger.info(`[INDEX_FIX] - Missing fields: ${templateMissingFields}`);
+          logger.info(`[INDEX_FIX] - Type mismatches: ${templateTypeMismatches}`);
+
+          if (!templateHasIssues) {
+            logger.info(
+              `[INDEX_FIX] ✅ Template has correct mapping for all ${expectedFields.length} fields. Index will be created correctly.`
+            );
           } else {
             logger.error(
-              `[INDEX_FIX] CRITICAL: Template namespace field is NOT keyword! Current type: ${
-                namespaceField?.type || 'undefined'
-              }`
-            );
-            logger.error(
-              `[INDEX_FIX] This will cause dashboard aggregation failures. Expected: keyword, Got: ${namespaceField?.type}`
+              `[INDEX_FIX] CRITICAL: Template has ${
+                templateMissingFields + templateTypeMismatches
+              } field issues! This will cause race conditions.`
             );
             logger.info(
-              `[INDEX_FIX] Attempting to fix template by updating it with correct keyword mapping...`
+              `[INDEX_FIX] Attempting to fix template by updating it with complete benchmarkScoreMapping...`
             );
 
             try {
@@ -669,13 +681,13 @@ export const ensureBenchmarkScoreIndexMapping = async (
               });
 
               logger.info(
-                `[INDEX_FIX] Successfully fixed template - namespace is now keyword type!`
+                `[INDEX_FIX] Successfully updated template with complete benchmarkScoreMapping!`
               );
 
               // Wait for template to be available
               await waitForIndexTemplate(esClient, BENCHMARK_SCORE_INDEX_TEMPLATE_NAME, logger);
             } catch (e) {
-              logger.error(`[INDEX_FIX] Failed to fix template: ${e}`);
+              logger.error(`[INDEX_FIX] Failed to update template: ${e}`);
               logger.error(
                 `[INDEX_FIX] Template fix failed. Restart Kibana or manually update template.`
               );
